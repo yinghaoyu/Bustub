@@ -81,12 +81,20 @@ class BufferPoolManagerInstance : public BufferPoolManager {
    */
   bool FlushPgImp(page_id_t page_id) override;
 
+  void FlushPg(page_id_t page_id);
+
   /**
    * Creates a new page in the buffer pool.
    * @param[out] page_id id of created page
    * @return nullptr if no new pages could be created, otherwise pointer to new page
    */
   Page *NewPgImp(page_id_t *page_id) override;
+
+  /**
+   * Find the page that can be used in NewPgImp()
+   * @return available frame_id
+   */
+  frame_id_t FindAvailablePg();
 
   /**
    * Deletes a page from the buffer pool.
@@ -105,6 +113,13 @@ class BufferPoolManagerInstance : public BufferPoolManager {
    * @return the id of the allocated page
    */
   page_id_t AllocatePage();
+
+  /**
+   * Find a page's frame_id
+   * @param page_id id of page to be found
+   * @return the frame we need, if cannot find return -1
+   */
+  frame_id_t FindPage(page_id_t page_id);
 
   /**
    * Deallocate a page on disk.
