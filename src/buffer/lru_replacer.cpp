@@ -29,7 +29,7 @@ bool LRUReplacer::Victim(frame_id_t *frame_id) {
   lru_map_.erase(last);
   lru_list_.pop_back();
   *frame_id = last;
-  return false;
+  return true;
 }
 
 // This method should be called after a page is pinned to a frame in the BufferPoolManager.
