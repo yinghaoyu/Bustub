@@ -23,6 +23,8 @@ namespace bustub {
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
 
+enum class Operation { READONLY = 0, INSERT, DELETE };
+
 /**
  * Main class providing the API for the Interactive B+ Tree.
  *
@@ -77,7 +79,8 @@ class BPlusTree {
   // read data from file and remove one by one
   void RemoveFromFile(const std::string &file_name, Transaction *transaction = nullptr);
   // expose for test purpose
-  Page *FindLeafPage(const KeyType &key, bool leftMost = false);
+  Page *FindLeafPage(const KeyType &key, bool leftMost = false, Operation op = Operation::READONLY,
+                     Transaction *transaction = nullptr);
 
  private:
   void StartNewTree(const KeyType &key, const ValueType &value);
@@ -88,14 +91,14 @@ class BPlusTree {
                         Transaction *transaction = nullptr);
 
   template <typename N>
-  N *Split(N *node);
+  N *Split(N *node, int InsertIndex);
 
   template <typename N>
   bool CoalesceOrRedistribute(N *node, Transaction *transaction = nullptr);
 
   template <typename N>
-  bool Coalesce(N **neighbor_node, N **node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> **parent,
-                int index, Transaction *transaction = nullptr);
+  bool Coalesce(N *neighbor_node, N *node, BPlusTreeInternalPage<KeyType, page_id_t, KeyComparator> *parent, int index,
+                Transaction *transaction = nullptr);
 
   template <typename N>
   void Redistribute(N *neighbor_node, N *node, int index);
@@ -103,6 +106,17 @@ class BPlusTree {
   bool AdjustRoot(BPlusTreePage *node);
 
   void UpdateRootPageId(int insert_record = 0);
+
+  inline void lockRoot() { mutex_.lock(); /*std::cout << "lock root" << std::endl;*/ }
+
+  inline void unlockRoot() { mutex_.unlock(); /*std::cout << "unlock root" << std::endl;*/ }
+
+  // Unlock and unpin parent page during operation path
+  void UnlockUnpinPages(Operation op, Transaction *transaction);
+
+  // Check operation safety or not
+  template <typename N>
+  bool isSafe(N *node, Operation op);
 
   /* Debug Routines for FREE!! */
   void ToGraph(BPlusTreePage *page, BufferPoolManager *bpm, std::ofstream &out) const;
@@ -116,6 +130,8 @@ class BPlusTree {
   KeyComparator comparator_;
   int leaf_max_size_;
   int internal_max_size_;
+  std::mutex mutex_;  // Guard for root_page_id_
+  bool root_is_locked_;
 };
 
 }  // namespace bustub
