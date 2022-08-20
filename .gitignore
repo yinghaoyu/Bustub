@@ -68,6 +68,7 @@ m4/lt~obsolete.m4
 #==============================================================================#
 #m4/
 build/
+release-cpp17
 #*.m4
 *.o
 *.lo
@@ -260,3 +261,6 @@ docs/dev
 
 # Vagrant
 .vagrant
+
+# Clang
+.clangd
