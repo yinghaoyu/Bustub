@@ -77,7 +77,7 @@ void BasicTest1() {
     delete txns[i];
   }
 }
-TEST(LockManagerTest, DISABLED_BasicTest) { BasicTest1(); }
+TEST(LockManagerTest, BasicTest) { BasicTest1(); }
 
 void TwoPLTest() {
   LockManager lock_mgr{};
@@ -123,7 +123,7 @@ void TwoPLTest() {
 
   delete txn;
 }
-TEST(LockManagerTest, DISABLED_TwoPLTest) { TwoPLTest(); }
+TEST(LockManagerTest, TwoPLTest) { TwoPLTest(); }
 
 void UpgradeTest() {
   LockManager lock_mgr{};
@@ -150,9 +150,9 @@ void UpgradeTest() {
   txn_mgr.Commit(&txn);
   CheckCommitted(&txn);
 }
-TEST(LockManagerTest, DISABLED_UpgradeLockTest) { UpgradeTest(); }
+TEST(LockManagerTest, UpgradeLockTest) { UpgradeTest(); }
 
-TEST(LockManagerTest, DISABLED_GraphEdgeTest) {
+TEST(LockManagerTest, GraphEdgeTest) {
   LockManager lock_mgr{};
   TransactionManager txn_mgr{&lock_mgr};
   const int num_nodes = 100;
@@ -181,20 +181,18 @@ TEST(LockManagerTest, DISABLED_GraphEdgeTest) {
     edges.emplace_back(t1, t2);
     EXPECT_EQ((i / 2) + 1, lock_mgr.GetEdgeList().size());
   }
-
   auto lock_mgr_edges = lock_mgr.GetEdgeList();
   EXPECT_EQ(num_edges, lock_mgr_edges.size());
   EXPECT_EQ(num_edges, edges.size());
 
   std::sort(lock_mgr_edges.begin(), lock_mgr_edges.end());
   std::sort(edges.begin(), edges.end());
-
   for (int i = 0; i < num_edges; i++) {
     EXPECT_EQ(edges[i], lock_mgr_edges[i]);
   }
 }
 
-TEST(LockManagerTest, DISABLED_BasicCycleTest) {
+TEST(LockManagerTest, BasicCycleTest) {
   LockManager lock_mgr{}; /* Use Deadlock detection */
   TransactionManager txn_mgr{&lock_mgr};
 
@@ -211,7 +209,7 @@ TEST(LockManagerTest, DISABLED_BasicCycleTest) {
   EXPECT_EQ(false, lock_mgr.HasCycle(&txn));
 }
 
-TEST(LockManagerTest, DISABLED_BasicDeadlockDetectionTest) {
+TEST(LockManagerTest, BasicDeadlockDetectionTest) {
   LockManager lock_mgr{};
   cycle_detection_interval = std::chrono::milliseconds(500);
   TransactionManager txn_mgr{&lock_mgr};

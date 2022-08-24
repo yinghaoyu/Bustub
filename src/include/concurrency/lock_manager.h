@@ -17,6 +17,7 @@
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -47,7 +48,9 @@ class LockManager {
    public:
     std::list<LockRequest> request_queue_;
     std::condition_variable cv_;  // for notifying blocked transactions on this rid
-    bool upgrading_ = false;
+    bool upgrading_ = false;      // for upgrading shared lock to exclusive lock
+    bool writing_ = false;        // ture means the queue have a exclusive lock
+    int shared_count_ = 0;        // for shared lock count
   };
 
  public:
@@ -57,12 +60,14 @@ class LockManager {
   LockManager() {
     enable_cycle_detection_ = true;
     cycle_detection_thread_ = new std::thread(&LockManager::RunCycleDetection, this);
+    LOG_INFO("Cycle detection thread launched");
   }
 
   ~LockManager() {
     enable_cycle_detection_ = false;
     cycle_detection_thread_->join();
-    delete cycle_detection_thread_;
+    assert(cycle_detection_thread_ != nullptr);
+    LOG_INFO("Cycle detection thread stopped");
   }
 
   /*
@@ -72,6 +77,10 @@ class LockManager {
    * 3. it is undefined behavior to try locking an already locked RID in the same transaction, i.e. the transaction
    *    is responsible for keeping track of its current locks.
    */
+
+  void CheckAborted(Transaction *txn, LockRequestQueue *request_queue);
+
+  bool LockPrepare(Transaction *txn, const RID &rid);
 
   /**
    * Acquire a lock on RID in shared mode. See [LOCK_NOTE] in header file.
@@ -105,6 +114,8 @@ class LockManager {
    */
   bool Unlock(Transaction *txn, const RID &rid);
 
+  std::list<LockRequest>::iterator GetIterator(std::list<LockRequest> &request_queue, txn_id_t txn_id);
+
   /*** Graph API ***/
   /**
    * Adds edge t1->t2
@@ -126,6 +137,12 @@ class LockManager {
   /** @return the set of all edges in the graph, used for testing only! */
   std::vector<std::pair<txn_id_t, txn_id_t>> GetEdgeList();
 
+  /** Abort a txn and delete all relative edges */
+  void DeleteNode(txn_id_t txn_id);
+
+  /** recursive function */
+  bool IsCycle(txn_id_t txn_id, std::vector<txn_id_t>& path);
+
   /** Runs cycle detection in the background. */
   void RunCycleDetection();
 
@@ -138,6 +155,9 @@ class LockManager {
   std::unordered_map<RID, LockRequestQueue> lock_table_;
   /** Waits-for graph representation. */
   std::unordered_map<txn_id_t, std::vector<txn_id_t>> waits_for_;
+
+  /** which Record a txn is waiting for, use to notify waiting txn */
+  std::unordered_map<txn_id_t, RID> require_record_;
 };
 
 }  // namespace bustub
