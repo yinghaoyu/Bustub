@@ -29,6 +29,7 @@ bool LockManager::LockPrepare(Transaction *txn, const RID &rid) {
   }
 
   if (lock_table_.find(rid) == lock_table_.end()) {
+    // Mutex and condition variable can not copy or move
     lock_table_.emplace(std::piecewise_construct, std::forward_as_tuple(rid), std::forward_as_tuple());
     lock_table_[rid].request_queue_.clear();
   }
@@ -242,23 +243,19 @@ void LockManager::DeleteNode(txn_id_t txn_id) {
   }
 }
 
-bool LockManager::IsCycle(txn_id_t txn_id, std::vector<txn_id_t>& path) {
-  if(waits_for_.find(txn_id) == waits_for_.end())
-  {
+bool LockManager::IsCycle(txn_id_t txn_id, std::vector<txn_id_t> &path) {
+  if (waits_for_.find(txn_id) == waits_for_.end()) {
     // Not have out edge
     return false;
   }
-  if(std::find(path.begin(), path.end(), txn_id) != path.end())
-  {
+  if (std::find(path.begin(), path.end(), txn_id) != path.end()) {
     // Already in path
     return true;
   }
   path.push_back(txn_id);
   std::vector<txn_id_t> &end = waits_for_[txn_id];
-  for(auto const &txn_id: end)
-  {
-    if(IsCycle(txn_id, path))
-    {
+  for (auto const &txn_id : end) {
+    if (IsCycle(txn_id, path)) {
       return true;
     }
   }
@@ -269,11 +266,9 @@ bool LockManager::IsCycle(txn_id_t txn_id, std::vector<txn_id_t>& path) {
 bool LockManager::HasCycle(txn_id_t *txn_id) {
   std::vector<txn_id_t> path;
   txn_id_t max = INVALID_TXN_ID;
-  for(auto entry: waits_for_)
-  {
+  for (auto entry : waits_for_) {
     txn_id_t cur = entry.first;
-    if(IsCycle(cur, path))
-    {
+    if (IsCycle(cur, path)) {
       // wait-died
       max = std::max(max, cur);
     }
