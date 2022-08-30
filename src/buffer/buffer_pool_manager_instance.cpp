@@ -14,6 +14,8 @@
 
 #include "common/macros.h"
 
+#include "common/logger.h"
+
 namespace bustub {
 
 BufferPoolManagerInstance::BufferPoolManagerInstance(size_t pool_size, DiskManager *disk_manager,
@@ -52,7 +54,7 @@ BufferPoolManagerInstance::~BufferPoolManagerInstance() {
 
 bool BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) {
   // Make sure you call DiskManager::WritePage!
-  std::scoped_lock<std::mutex> guard(latch_);
+  std::scoped_lock<std::mutex> scoped_latch(latch_);
 
   auto iter = page_table_.find(page_id);
   if (iter == page_table_.end()) {
@@ -76,7 +78,7 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
   // 2.   Pick a victim page P from either the free list or the replacer. Always pick from the free list first.
   // 3.   Update P's metadata, zero out memory and add P to the page table.
   // 4.   Set the page ID output parameter. Return a pointer to P.
-  std::scoped_lock<std::mutex> guard(latch_);
+  std::scoped_lock<std::mutex> scoped_latch(latch_);
 
   auto frame_id = FindAvailablePg();  // 这里包含对淘汰页的写磁盘操作
   if (frame_id == -1) {
@@ -103,7 +105,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
   // 2.     If R is dirty, write it back to the disk.
   // 3.     Delete R from the page table and insert P.
   // 4.     Update P's metadata, read in the page content from disk, and then return a pointer to P.
-  std::scoped_lock<std::mutex> guard(latch_);
+  std::scoped_lock<std::mutex> scoped_latch(latch_);
 
   // 该页在buffer pool中
   frame_id_t frame_id = FindPage(page_id);
@@ -141,7 +143,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   // 1.   If P does not exist, return true.
   // 2.   If P exists, but has a non-zero pin-count, return false. Someone is using the page.
   // 3.   Otherwise, P can be deleted. Remove P from the page table, reset its metadata and return it to the free list.
-  std::scoped_lock<std::mutex> guard(latch_);
+  std::scoped_lock<std::mutex> scoped_latch(latch_);
   DeallocatePage(page_id);
 
   auto frame_id = FindPage(page_id);
@@ -160,7 +162,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
 }
 
 bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
-  std::scoped_lock<std::mutex> guard(latch_);
+  std::scoped_lock<std::mutex> scoped_latch(latch_);
   auto frame_id = FindPage(page_id);
   if (frame_id == -1 || pages_[frame_id].pin_count_ == 0) {
     return false;
@@ -196,6 +198,10 @@ frame_id_t BufferPoolManagerInstance::FindPage(page_id_t page_id) {
 
 void BufferPoolManagerInstance::FlushPg(page_id_t page_id) {
   auto frame_id = FindPage(page_id);
+  if(frame_id == -1){
+    LOG_INFO("page_id = %d, frame_id = %d", page_id, frame_id);
+    return;
+  }
   if (pages_[frame_id].IsDirty()) {
     disk_manager_->WritePage(page_id, pages_[frame_id].GetData());
     pages_[frame_id].is_dirty_ = false;
