@@ -102,6 +102,8 @@ class HashTableBucketPage {
    */
   void SetOccupied(uint32_t bucket_idx);
 
+  void SetOccupied(uint32_t bucket_idx, bool flag);
+
   /**
    * Returns whether or not an index is readable (valid key/value pair)
    *
@@ -118,6 +120,8 @@ class HashTableBucketPage {
    */
   void SetReadable(uint32_t bucket_idx);
 
+  void SetReadable(uint32_t bucket_idx, bool flag);
+
   /**
    * @return the number of readable elements, i.e. current size
    */
@@ -133,10 +137,14 @@ class HashTableBucketPage {
    */
   bool IsEmpty();
 
+  std::vector<MappingType> GetKeyValueCopy();
+
   /**
    * Prints the bucket's occupancy information
    */
   void PrintBucket();
+
+  void Clear();
 
  private:
   // For more on BUCKET_ARRAY_SIZE see storage/page/hash_table_page_defs.h
@@ -144,7 +152,7 @@ class HashTableBucketPage {
   // 0 if tombstone/brand new (never occupied), 1 otherwise.
   char readable_[(BUCKET_ARRAY_SIZE - 1) / 8 + 1];
   // Do not add any members below array_, as they will overlap.
-  MappingType array_[0];
+  MappingType array_[BUCKET_ARRAY_SIZE];
 };
 
 }  // namespace bustub
