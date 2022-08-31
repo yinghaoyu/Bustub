@@ -1,42 +1,42 @@
-# 配置环境
+# Environment Setup
 
 ## Ubuntu 20.04
 
-### 安装配置docker
+### Install and deploy docker
 
-更新软件包索引，并且安装必要的依赖软件，来添加一个新的 HTTPS 软件源：
+Update the package and install the necessary dependencies to add a new HTTPS repository:
 
 ```bash
 sudo apt update
 sudo apt install apt-transport-https ca-certificates curl gnupg-agent software-properties-common
 ```
 
-使用下面的 curl 导入源仓库的 GPG key：
+Import the GPG key of the source repository:
 
 ```bash
 curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo apt-key add -
 ```
 
-将 Docker APT 软件源添加到你的系统：
+Add the Docker APT repositories to your machine:
 
 ```bash
 sudo add-apt-repository "deb [arch=amd64] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable"
 ```
 
-将 Docker APT 软件源添加到你的系统：
+Install Docker APT to your machine：
 
 ```bash
 sudo apt update
 sudo apt install docker-ce docker-ce-cli containerd.io
 ```
 
-运行docker：
+Run docker:
 
 ```bash
 sudo service docker start
 ```
 
-添加docker源：
+Add docker source:
 
 `sudo vim /ext/docker/daemon.json`
 
@@ -56,21 +56,21 @@ sudo service docker start
 sudo docker info
 ```
 
-### 复制docker容器
+### Copy container
 
 ``` bash
 docker build . -t bustub
 docker create -t -i --name bustub -v $(pwd):/bustub bustub bash
 ```
 
-docker和本地目录的挂载来实现在本地修改在docker中自动同步:
+Synchronize when modify in docker:
 
 ```bash
 docker container run -it -v /mnt/d/src/Bustub:/bustub --name=bustub_env bustub /bin/bash
 ```
 
-下次运行该容器：
+Run the container next time:
 
 ```bash
-docker exec -it 容器id /bin/bash
+docker exec -it containerId /bin/bash
 ```
