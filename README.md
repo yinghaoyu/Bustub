@@ -4,6 +4,8 @@ THIS REPO IS FOR INSPIRATION ONLY, IF YOU ARE A STUDENT IN THE CLASS, DO NOT DIR
 
 ## Brief
 
+Forked from https://github.com/cmu-db/bustub
+
 Schedule at https://15445.courses.cs.cmu.edu/fall2020/schedule.html
 
 Assignments at https://15445.courses.cs.cmu.edu/fall2020/assignments.html
@@ -14,6 +16,7 @@ Video available at [YouTube](https://www.youtube.com/playlist?list=PLSE8ODhjZXjb
 
 - [x] [C++ Primer](https://15445.courses.cs.cmu.edu/fall2020/project0/)
 - [x] [Buffer Pool Manager](https://15445.courses.cs.cmu.edu/fall2020/project1/)
+- [x] [Extendible Hash Table]()
 - [x] [B+Tree Index](https://15445.courses.cs.cmu.edu/fall2020/project2/)
 - [x] [Query Execution](https://15445.courses.cs.cmu.edu/fall2020/project3/)
 - [ ] [Concurrency Control](https://15445.courses.cs.cmu.edu/fall2020/project4/)
