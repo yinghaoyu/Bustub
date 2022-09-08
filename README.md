@@ -16,7 +16,7 @@ Video available at [YouTube](https://www.youtube.com/playlist?list=PLSE8ODhjZXjb
 
 - [x] [C++ Primer](https://15445.courses.cs.cmu.edu/fall2020/project0/)
 - [x] [Buffer Pool Manager](https://15445.courses.cs.cmu.edu/fall2020/project1/)
-- [x] [Extendible Hash Table]()
+- [x] [Hash Index](https://15445.courses.cs.cmu.edu/fall2021/project2/)
 - [x] [B+Tree Index](https://15445.courses.cs.cmu.edu/fall2020/project2/)
 - [x] [Query Execution](https://15445.courses.cs.cmu.edu/fall2020/project3/)
 - [ ] [Concurrency Control](https://15445.courses.cs.cmu.edu/fall2020/project4/)
