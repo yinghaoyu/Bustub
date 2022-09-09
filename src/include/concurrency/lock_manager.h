@@ -17,7 +17,9 @@
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <stack>
 #include <unordered_map>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -33,6 +35,7 @@ class TransactionManager;
  */
 class LockManager {
   enum class LockMode { SHARED, EXCLUSIVE };
+  enum class VisitedType { NOT_VISITED, IN_STACK, VISITED };
 
   class LockRequest {
    public:
@@ -57,12 +60,15 @@ class LockManager {
   LockManager() {
     enable_cycle_detection_ = true;
     cycle_detection_thread_ = new std::thread(&LockManager::RunCycleDetection, this);
+    LOG_INFO("Cycle detection thread launched");
   }
 
   ~LockManager() {
     enable_cycle_detection_ = false;
     cycle_detection_thread_->join();
+    BUSTUB_ASSERT(cycle_detection_thread_ != nullptr, "Cycle detection thread already nullptr");
     delete cycle_detection_thread_;
+    LOG_INFO("Cycle detection thread stopped");
   }
 
   /*
@@ -129,7 +135,43 @@ class LockManager {
   /** Runs cycle detection in the background. */
   void RunCycleDetection();
 
+  /**
+   * Test lock compatibility for a lock request against the lock request queue that it accquires lock on
+   *
+   * Return true if and only if:
+   * - queue is empty
+   * - compatible with locks that are currently held
+   * - all **earlier** requests have been granted already
+   * @param lock_request_queue the queue to test compatibility
+   * @param lock_request the request to test
+   * @return true if compatible, otherwise false
+   */
+  static bool IsLockCompatible(const LockRequestQueue &lock_request_queue, const LockRequest &to_check_request) {
+    for (auto &&lock_request : lock_request_queue.request_queue_) {
+      if (lock_request.txn_id_ == to_check_request.txn_id_) {
+        return true;
+      }
+
+      const auto is_compatible =
+          lock_request.granted_ &&                         // all **earlier** requests have been granted already
+          (lock_request.lock_mode_ == LockMode::EXCLUSIVE  // compatible with locks that are currently held
+               ? false
+               : to_check_request.lock_mode_ != LockMode::EXCLUSIVE);
+      if (!is_compatible) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+
  private:
+  void AbortImplicitly(Transaction *txn, AbortReason abort_reason);
+  bool ProcessDFSTree(txn_id_t *txn_id, std::stack<txn_id_t> *stack,
+                      std::unordered_map<txn_id_t, VisitedType> *visited);
+  txn_id_t GetYoungestTransactionInCycle(std::stack<txn_id_t> *stack, txn_id_t vertex);
+  void BuildWaitsForGraph();
+
   std::mutex latch_;
   std::atomic<bool> enable_cycle_detection_;
   std::thread *cycle_detection_thread_;
