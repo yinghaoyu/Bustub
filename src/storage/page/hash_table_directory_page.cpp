@@ -82,6 +82,7 @@ void HashTableDirectoryPage::DecrLocalDepth(uint32_t bucket_idx) { local_depths_
 
 uint32_t HashTableDirectoryPage::GetSplitImageIndex(uint32_t bucket_idx) {
   uint32_t local_depth = local_depths_[bucket_idx];
+  // https://zhuanlan.zhihu.com/p/534398032
   return bucket_idx ^ (1 << (local_depth - 1));
 }
 
