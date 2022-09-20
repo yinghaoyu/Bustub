@@ -30,6 +30,15 @@ Transaction *TransactionManager::Begin(Transaction *txn, IsolationLevel isolatio
     txn = new Transaction(next_txn_id_++, isolation_level);
   }
 
+  // Add record when begin a transaction
+  if (enable_logging) {
+    LogRecord log_record(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::BEGIN);
+
+    auto lsn = log_manager_->AppendLogRecord(&log_record);
+
+    txn->SetPrevLSN(lsn);
+  }
+
   txn_map[txn->GetTransactionId()] = txn;
   return txn;
 }
@@ -49,6 +58,15 @@ void TransactionManager::Commit(Transaction *txn) {
     write_set->pop_back();
   }
   write_set->clear();
+
+  // Add record when commit a transaction
+  if (enable_logging) {
+    LogRecord log_record(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::COMMIT);
+
+    auto lsn = log_manager_->AppendLogRecord(&log_record);
+
+    txn->SetPrevLSN(lsn);
+  }
 
   // Release all the locks.
   ReleaseLocks(txn);
@@ -99,6 +117,15 @@ void TransactionManager::Abort(Transaction *txn) {
   }
   table_write_set->clear();
   index_write_set->clear();
+
+  // Add record when abort a transaction
+  if (enable_logging) {
+    LogRecord log_record(txn->GetTransactionId(), txn->GetPrevLSN(), LogRecordType::ABORT);
+
+    auto lsn = log_manager_->AppendLogRecord(&log_record);
+
+    txn->SetPrevLSN(lsn);
+  }
 
   // Release all the locks.
   ReleaseLocks(txn);

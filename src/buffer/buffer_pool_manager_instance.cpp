@@ -198,11 +198,14 @@ frame_id_t BufferPoolManagerInstance::FindPage(page_id_t page_id) {
 
 void BufferPoolManagerInstance::FlushPg(page_id_t page_id) {
   auto frame_id = FindPage(page_id);
-  if(frame_id == -1){
+  if (frame_id == -1) {
     LOG_INFO("page_id = %d, frame_id = %d", page_id, frame_id);
     return;
   }
   if (pages_[frame_id].IsDirty()) {
+    if (enable_logging && pages_[frame_id].GetLSN() > log_manager_->GetPersistentLSN()) {
+      log_manager_->Flush();
+    }
     disk_manager_->WritePage(page_id, pages_[frame_id].GetData());
     pages_[frame_id].is_dirty_ = false;
     pages_[frame_id].pin_count_ = 0;

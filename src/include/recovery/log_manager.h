@@ -44,6 +44,9 @@ class LogManager {
   void RunFlushThread();
   void StopFlushThread();
 
+  /* flush log to disk */
+  void Flush();
+
   lsn_t AppendLogRecord(LogRecord *log_record);
 
   inline lsn_t GetNextLSN() { return next_lsn_; }
@@ -62,11 +65,18 @@ class LogManager {
   char *log_buffer_;
   char *flush_buffer_;
 
+  int log_buffer_offset_ = 0;
+  int flush_buffer_offset_ = 0;
+
   std::mutex latch_;
 
   std::thread *flush_thread_ __attribute__((__unused__));
 
   std::condition_variable cv_;
+  std::condition_variable cv_append_;
+
+  // notification signal
+  std::atomic_bool need_flush_ = false;
 
   DiskManager *disk_manager_ __attribute__((__unused__));
 };
