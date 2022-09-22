@@ -66,9 +66,10 @@ bool BufferPoolManagerInstance::FlushPgImp(page_id_t page_id) {
 
 void BufferPoolManagerInstance::FlushAllPgsImp() {
   // You can do it!
-  std::scoped_lock<std::mutex> guard(latch_);
+  std::scoped_lock<std::mutex> scoped_latch(latch_);
   for (const auto &entry : page_table_) {
-    FlushPgImp(entry.first);
+    // 注意这里不能使用 FlushPgImp
+    FlushPg(entry.first);
   }
 }
 
@@ -81,7 +82,7 @@ Page *BufferPoolManagerInstance::NewPgImp(page_id_t *page_id) {
   std::scoped_lock<std::mutex> scoped_latch(latch_);
 
   auto frame_id = FindAvailablePg();  // 这里包含对淘汰页的写磁盘操作
-  if (frame_id == -1) {
+  if (frame_id == INVALID_FREME_ID) {
     // buffer pool所有的页都在使用中
     return nullptr;
   }
@@ -109,7 +110,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
 
   // 该页在buffer pool中
   frame_id_t frame_id = FindPage(page_id);
-  if (frame_id != -1) {
+  if (frame_id != INVALID_FREME_ID) {
     pages_[frame_id].pin_count_++;  // pin the page
     replacer_->Pin(frame_id);       // notify replacer
     pages_[frame_id].is_dirty_ = true;
@@ -118,7 +119,7 @@ Page *BufferPoolManagerInstance::FetchPgImp(page_id_t page_id) {
 
   // 该页不在缓冲区中，执行LRU替换页
   frame_id_t replace_frame_id = FindAvailablePg();
-  if (replace_frame_id == -1) {
+  if (replace_frame_id == INVALID_FREME_ID) {
     return nullptr;
   }
   // 判断换出的页是否需要写磁盘
@@ -147,7 +148,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
   DeallocatePage(page_id);
 
   auto frame_id = FindPage(page_id);
-  if (frame_id != -1) {
+  if (frame_id != INVALID_FREME_ID) {
     if (pages_[frame_id].GetPinCount() != 0) {
       // 引用计数大于0，说明该页面被使用不能删除
       return false;
@@ -164,7 +165,7 @@ bool BufferPoolManagerInstance::DeletePgImp(page_id_t page_id) {
 bool BufferPoolManagerInstance::UnpinPgImp(page_id_t page_id, bool is_dirty) {
   std::scoped_lock<std::mutex> scoped_latch(latch_);
   auto frame_id = FindPage(page_id);
-  if (frame_id == -1 || pages_[frame_id].pin_count_ == 0) {
+  if (frame_id == INVALID_FREME_ID || pages_[frame_id].pin_count_ == 0) {
     return false;
   }
 
@@ -193,13 +194,13 @@ frame_id_t BufferPoolManagerInstance::FindPage(page_id_t page_id) {
   if (iter != page_table_.end()) {
     return iter->second;
   }
-  return -1;
+  return INVALID_FREME_ID;
 }
 
 void BufferPoolManagerInstance::FlushPg(page_id_t page_id) {
   auto frame_id = FindPage(page_id);
-  if (frame_id == -1) {
-    LOG_INFO("page_id = %d, frame_id = %d", page_id, frame_id);
+  if (frame_id == INVALID_FREME_ID) {
+    LOG_INFO("This page not in page table, page_id = %d, frame_id = %d", page_id, frame_id);
     return;
   }
   if (pages_[frame_id].IsDirty()) {
@@ -229,7 +230,7 @@ frame_id_t BufferPoolManagerInstance::FindAvailablePg() {
     page_table_.erase(pageid);
     return ans;
   }
-  return -1;
+  return INVALID_FREME_ID;
 }
 
 }  // namespace bustub
