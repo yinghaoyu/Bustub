@@ -79,7 +79,7 @@ void LogManager::StopFlushThread() {
  *
  */
 lsn_t LogManager::AppendLogRecord(LogRecord *log_record) {
-  std::unique_lock<std::mutex> lock(latch_);
+  std::unique_lock<std::mutex> l(latch_);
 
   // flush log to disk when the log buffer is full
   if (log_record->size_ + log_buffer_offset_ > LOG_BUFFER_SIZE) {
@@ -88,7 +88,7 @@ lsn_t LogManager::AppendLogRecord(LogRecord *log_record) {
     cv_.notify_one();
 
     // block current thread until log buffer is emptied
-    cv_append_.wait(lock, [&] { return log_record->size_ + log_buffer_offset_ <= LOG_BUFFER_SIZE; });
+    cv_append_.wait(l, [&] { return log_record->size_ + log_buffer_offset_ <= LOG_BUFFER_SIZE; });
   }
 
   // serialize header
@@ -140,12 +140,12 @@ void LogManager::Flush() {
     return;
   }
 
-  std::unique_lock<std::mutex> lock(latch_);
+  std::unique_lock<std::mutex> l(latch_);
   need_flush_ = true;
   cv_.notify_one();
 
   // block thread until flush finished
-  cv_append_.wait(lock, [&] { return !need_flush_.load(); });
+  cv_append_.wait(l, [&] { return !need_flush_.load(); });
 }
 
 }  // namespace bustub

@@ -225,9 +225,21 @@ TEST(LockManagerTest, BasicDeadlockDetectionTest) {
     bool res = lock_mgr.LockExclusive(txn0, rid0);
     EXPECT_EQ(true, res);
     EXPECT_EQ(TransactionState::GROWING, txn0->GetState());
+    // wait-die
+    // 两种环形等待情况分析：
+    // txn0 对 rid0 上锁
+    // txn1 对 rid1 上锁
+    // txn0 对 rid1 上锁
+    // txn1 对 rid0 上锁  ---> 由于 txn1 是新事务，状态变为aborted，事务回滚
+
+    // txn0 对 rid0 上锁
+    // txn1 对 rid1 上锁
+    // txn1 对 rid0 上锁
+    // txn0 对 rid1 上锁  --> 由于 txn0 是老事务，所以等待新事务aborted，再继续执行
     std::this_thread::sleep_for(std::chrono::milliseconds(100));
 
     // This will block
+    // 因为用的是 wait-die 方式，旧事务等待新事务释放锁
     lock_mgr.LockExclusive(txn0, rid1);
 
     lock_mgr.Unlock(txn0, rid0);

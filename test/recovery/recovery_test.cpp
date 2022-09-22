@@ -84,6 +84,7 @@ TEST_F(RecoveryTest, RedoTest) {
 
   LOG_INFO("Shutdown System");
   delete bustub_instance;
+  remove("test.db");  // 删掉磁盘里的db文件
 
   LOG_INFO("System restart...");
   bustub_instance = new BustubInstance("test.db");
@@ -95,6 +96,7 @@ TEST_F(RecoveryTest, RedoTest) {
   txn = bustub_instance->transaction_manager_->Begin();
   test_table = new TableHeap(bustub_instance->buffer_pool_manager_, bustub_instance->lock_manager_,
                              bustub_instance->log_manager_, first_page_id);
+  // 在新的test_table里，old_tuple和old_tuple1应该是不存在的
   ASSERT_FALSE(test_table->GetTuple(rid, &old_tuple, txn));
   ASSERT_FALSE(test_table->GetTuple(rid1, &old_tuple1, txn));
   bustub_instance->transaction_manager_->Commit(txn);
