@@ -216,21 +216,23 @@ std::vector<std::pair<txn_id_t, txn_id_t>> LockManager::GetEdgeList() {
 }
 
 bool LockManager::HasCycle(txn_id_t *txn_id) {
-  std::vector<txn_id_t> vertices;
+  std::vector<txn_id_t> vertices;  // all nodes
   std::transform(waits_for_.begin(), waits_for_.end(), std::back_inserter(vertices),
                  [](const auto &pair) { return pair.first; });
   std::sort(vertices.begin(), vertices.end());
 
+  // Recording node we visited
   std::unordered_map<txn_id_t, LockManager::VisitedType> visited;
 
+  // Round-robin
   for (auto &&v : vertices) {
     // vertex is NOT_VISITED
     if (auto it = visited.find(v); it == visited.end()) {
-      std::stack<txn_id_t> stack;
-      stack.push(v);
+      std::stack<txn_id_t> path;
+      path.push(v);
       visited.emplace(v, LockManager::VisitedType::IN_STACK);
 
-      auto has_cycle = ProcessDFSTree(txn_id, &stack, &visited);
+      auto has_cycle = ProcessDFSTree(txn_id, &path, &visited);
       if (has_cycle) {
         return true;
       }
@@ -240,52 +242,56 @@ bool LockManager::HasCycle(txn_id_t *txn_id) {
   return false;
 }
 
-bool LockManager::ProcessDFSTree(txn_id_t *txn_id, std::stack<txn_id_t> *stack,
+bool LockManager::ProcessDFSTree(txn_id_t *txn_id, std::stack<txn_id_t> *path,
                                  std::unordered_map<txn_id_t, LockManager::VisitedType> *visited) {
   bool has_cycle = false;
 
-  for (auto &&v : waits_for_[stack->top()]) {
+  // from: path->top()
+  // to  : v
+  for (auto &&v : waits_for_[path->top()]) {
     auto it = visited->find(v);
 
-    // find a cycle
+    // v already in visited, find a cycle
     if (it != visited->end() && it->second == LockManager::VisitedType::IN_STACK) {
-      *txn_id = GetYoungestTransactionInCycle(stack, v);
+      *txn_id = GetYoungestTransactionInCycle(path, v);
       has_cycle = true;
       break;
     }
 
     // v is NOT_VISITED
     if (it == visited->end()) {
-      stack->push(v);
+      path->push(v);
       visited->emplace(v, LockManager::VisitedType::IN_STACK);
 
-      has_cycle = ProcessDFSTree(txn_id, stack, visited);
+      has_cycle = ProcessDFSTree(txn_id, path, visited);
       if (has_cycle) {
         break;
       }
     }
   }
 
-  visited->insert_or_assign(stack->top(), LockManager::VisitedType::VISITED);
-  stack->pop();
+  // from: path->top() handled，we must handle next node
+  visited->insert_or_assign(path->top(), LockManager::VisitedType::VISITED);
+  path->pop();
 
   return has_cycle;
 }
 
-txn_id_t LockManager::GetYoungestTransactionInCycle(std::stack<txn_id_t> *stack, txn_id_t vertex) {
+txn_id_t LockManager::GetYoungestTransactionInCycle(std::stack<txn_id_t> *path, txn_id_t vertex) {
   txn_id_t max_txn_id = 0;
   std::stack<txn_id_t> tmp;
-  tmp.push(stack->top());
-  stack->pop();
+  tmp.push(path->top());
+  path->pop();
 
+  // Get cycle path
   while (tmp.top() != vertex) {
-    tmp.push(stack->top());
-    stack->pop();
+    tmp.push(path->top());
+    path->pop();
   }
-
+  // Find Youngest Transaction and recovery path
   while (!tmp.empty()) {
     max_txn_id = std::max(max_txn_id, tmp.top());
-    stack->push(tmp.top());
+    path->push(tmp.top());
     tmp.pop();
   }
 
@@ -300,6 +306,7 @@ void LockManager::BuildWaitsForGraph() {
 
     for (const auto &lock_request : queue) {
       const auto txn = TransactionManager::GetTransaction(lock_request.txn_id_);
+      // Ignore aborted transaction
       if (txn->GetState() == TransactionState::ABORTED) {
         continue;
       }
@@ -310,7 +317,7 @@ void LockManager::BuildWaitsForGraph() {
         waitings.push_back(lock_request.txn_id_);
       }
     }
-
+    // Build directed graph
     for (auto &&t1 : waitings) {
       for (auto &&t2 : holdings) {
         AddEdge(t1, t2);
