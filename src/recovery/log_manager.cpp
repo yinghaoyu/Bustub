@@ -93,7 +93,7 @@ lsn_t LogManager::AppendLogRecord(LogRecord *log_record) {
 
   // serialize header
   log_record->lsn_ = next_lsn_++;
-  memcpy(log_buffer_ + log_buffer_offset_, log_record, LogRecord::HEADER_SIZE);
+  memcpy(log_buffer_ + log_buffer_offset_, static_cast<void *>(log_record), LogRecord::HEADER_SIZE);
   int pos = log_buffer_offset_ + LogRecord::HEADER_SIZE;
 
   // serialize body
