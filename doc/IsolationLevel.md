@@ -56,5 +56,3 @@ txn1 counts the number of rows, txn2 inserts data and commit, txn1 counts the nu
 
 - `REPEATABLE READ` to solve the problem of no-repeatable reads. The transaction does not want to be disturbed by the writing of other transactions in the middle of reading data twice, which requires the use of a **Two-Phase Lock(2PL)**: the transaction is divided into two stages (commit/abort is not considered), and the locking stage (GROWING) is only locked, and the unlocking stage (SHINKING) is only unlocked. In this way, when reading the second time, the read lock of the previous reading must still be there, avoiding the modification in the middle.
 
-
-
