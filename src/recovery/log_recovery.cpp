@@ -145,6 +145,7 @@ void LogRecovery::Redo() {
 
         case LogRecordType::COMMIT:
         case LogRecordType::ABORT:
+          // active_txn_ means transaction at BEGIN but not COMMIT
           active_txn_.erase(log_record.txn_id_);
           break;
 
@@ -186,6 +187,7 @@ void LogRecovery::Redo() {
  *iterate through active txn map and undo each operation
  */
 void LogRecovery::Undo() {
+  // roll back transaction at BEGIN but not COMMIT
   for (auto [txn_id, lsn] : active_txn_) {
     while (lsn != INVALID_LSN) {
       // read log from dist and convert log buffer entry to log record
