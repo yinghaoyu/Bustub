@@ -1,8 +1,6 @@
-# Concurrency Control
+# Isolation Level
 
-## Task 1# Lock Manager
-
-### Isolation Level
+## Brief
 
 | Level            | Dirty Read | Non-repeatable Read | Phantom Read |
 |------------------|:----------:|:-------------------:|:------------:|
@@ -48,7 +46,7 @@ txn1 reads data, txn2 modifies data and commit, txn1 reads data again, and the d
 
 txn1 counts the number of rows, txn2 inserts data and commit, txn1 counts the number of rows again, and the number of rows counted by txn1 is inconsistent.
 
-### Solution of lock
+## Solution of lock
 
 - `READ UNCOMMITED` only takes a write lock when needed.
 
