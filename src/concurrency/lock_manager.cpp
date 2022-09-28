@@ -26,7 +26,7 @@ void LockManager::AbortImplicitly(Transaction *txn, AbortReason abort_reason) {
 }
 
 bool LockManager::LockShared(Transaction *txn, const RID &rid) {
-  // To imple read_uncommitted, only lock recursively when necessary
+  // To imple read_uncommitted, only lock exclusive when necessary
   if (txn->GetIsolationLevel() == IsolationLevel::READ_UNCOMMITTED) {
     AbortImplicitly(txn, AbortReason::LOCKSHARED_ON_READ_UNCOMMITTED);
     return false;
