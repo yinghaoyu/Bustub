@@ -30,6 +30,7 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   LockManager *lock_mgr = GetExecutorContext()->GetLockManager();
   Transaction *txn = GetExecutorContext()->GetTransaction();
   while (child_executor_->Next(tuple, rid)) {
+    // Upgrade lock when lock shared
     if (txn->IsSharedLocked(*rid)) {
       if (!lock_mgr->LockUpgrade(txn, *rid)) {
         throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);
@@ -40,23 +41,25 @@ bool DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
       }
     }
 
+    // Mark delete
     if (!table_heap_->MarkDelete(*rid, exec_ctx_->GetTransaction())) {
       LOG_DEBUG("Delete failed");
       return false;
     }
 
     for (const auto &index : exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_)) {
+      // Delete index
       index->index_->DeleteEntry(
           tuple->KeyFromTuple(table_info_->schema_, *index->index_->GetKeySchema(), index->index_->GetKeyAttrs()), *rid,
           exec_ctx_->GetTransaction());
-
+      // Recording index changed
       txn->GetIndexWriteSet()->emplace_back(
           IndexWriteRecord(*rid, table_info_->oid_, WType::DELETE, *tuple, index->index_oid_, exec_ctx_->GetCatalog()));
-
-      if (txn->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
-        if (!lock_mgr->Unlock(txn, *rid)) {
-          throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);
-        }
+    }
+    // 2PL limits
+    if (txn->GetIsolationLevel() != IsolationLevel::REPEATABLE_READ) {
+      if (!lock_mgr->Unlock(txn, *rid)) {
+        throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);
       }
     }
   }

@@ -48,6 +48,7 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     iter_++;
   }
 
+  // Insert tuple
   if (!table_heap_->InsertTuple(*tuple, rid, exec_ctx_->GetTransaction())) {
     LOG_DEBUG("INSERT FAIL");
     return false;
@@ -56,6 +57,7 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   Transaction *txn = GetExecutorContext()->GetTransaction();
   LockManager *lock_mgr = GetExecutorContext()->GetLockManager();
 
+  // Upgrade lock when lock shared
   if (txn->IsSharedLocked(*rid)) {
     if (!lock_mgr->LockUpgrade(txn, *rid)) {
       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);
@@ -66,12 +68,14 @@ bool InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     }
   }
 
+  // Insert index
   for (const auto &index : catalog_->GetTableIndexes(table_info_->name_)) {
     index->index_->InsertEntry(
         tuple->KeyFromTuple(table_info_->schema_, *index->index_->GetKeySchema(), index->index_->GetKeyAttrs()), *rid,
         exec_ctx_->GetTransaction());
   }
 
+  // 2PL limits
   if (txn->GetIsolationLevel() != IsolationLevel::REPEATABLE_READ) {
     if (!lock_mgr->Unlock(txn, *rid)) {
       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);

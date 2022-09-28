@@ -33,6 +33,8 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
 
   LockManager *lock_mgr = GetExecutorContext()->GetLockManager();
   Transaction *txn = GetExecutorContext()->GetTransaction();
+  // For read_uncommitted, only lock exclusive when necessary
+  // For read_committed and repeatable_read, lock normally
   if (txn->GetIsolationLevel() != IsolationLevel::READ_UNCOMMITTED) {
     if (!lock_mgr->LockShared(txn, *rid)) {
       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);
@@ -46,6 +48,8 @@ bool SeqScanExecutor::Next(Tuple *tuple, RID *rid) {
 
   *tuple = Tuple(values, plan_->OutputSchema());
 
+  // For read_committed, unlock immediately after reading
+  // For repeatable_read, unlock after transaction committed (2PL limits)
   if (txn->GetIsolationLevel() == IsolationLevel::READ_COMMITTED) {
     if (!lock_mgr->Unlock(txn, *rid)) {
       throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);

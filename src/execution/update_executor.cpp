@@ -29,6 +29,7 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
   LockManager *lock_mgr = GetExecutorContext()->GetLockManager();
   Transaction *txn = GetExecutorContext()->GetTransaction();
   while (child_executor_->Next(tuple, rid)) {
+    // Upgrade lock when lock shared
     if (txn->IsSharedLocked(*rid)) {
       if (!lock_mgr->LockUpgrade(txn, *rid)) {
         throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);
@@ -39,6 +40,17 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
       }
     }
 
+    for (const auto &index : exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_)) {
+      // Delete old index
+      index->index_->DeleteEntry(
+          tuple->KeyFromTuple(table_info_->schema_, *index->index_->GetKeySchema(), index->index_->GetKeyAttrs()), *rid,
+          exec_ctx_->GetTransaction());
+      // Recording index changed
+      txn->GetIndexWriteSet()->emplace_back(
+          IndexWriteRecord(*rid, table_info_->oid_, WType::DELETE, *tuple, index->index_oid_, exec_ctx_->GetCatalog()));
+    }
+
+    // Update tuple
     *tuple = GenerateUpdatedTuple(*tuple);
     if (!table_heap_->UpdateTuple(*tuple, *rid, exec_ctx_->GetTransaction())) {
       LOG_DEBUG("Update tuple failed");
@@ -46,11 +58,16 @@ bool UpdateExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) {
     }
 
     for (const auto &index : exec_ctx_->GetCatalog()->GetTableIndexes(table_info_->name_)) {
+      // Insert new index
       index->index_->InsertEntry(
           tuple->KeyFromTuple(table_info_->schema_, *index->index_->GetKeySchema(), index->index_->GetKeyAttrs()), *rid,
           exec_ctx_->GetTransaction());
+      // Recording index changed
+      txn->GetIndexWriteSet()->emplace_back(
+          IndexWriteRecord(*rid, table_info_->oid_, WType::INSERT, *tuple, index->index_oid_, exec_ctx_->GetCatalog()));
     }
 
+    // 2PL limits
     if (txn->GetIsolationLevel() != IsolationLevel::REPEATABLE_READ) {
       if (!lock_mgr->Unlock(txn, *rid)) {
         throw TransactionAbortException(txn->GetTransactionId(), AbortReason::DEADLOCK);
