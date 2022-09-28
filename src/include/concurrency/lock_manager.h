@@ -159,9 +159,8 @@ class LockManager {
 
  private:
   void AbortImplicitly(Transaction *txn, AbortReason abort_reason);
-  bool ProcessDFSTree(txn_id_t *txn_id, std::stack<txn_id_t> *stack,
-                      std::unordered_map<txn_id_t, VisitedType> *visited);
-  txn_id_t GetYoungestTransactionInCycle(std::stack<txn_id_t> *stack, txn_id_t vertex);
+  bool ProcessDFSTree(txn_id_t *txn_id, std::stack<txn_id_t> *path, std::unordered_map<txn_id_t, VisitedType> *visited);
+  txn_id_t GetYoungestTransactionInCycle(std::stack<txn_id_t> *path, txn_id_t vertex);
   void BuildWaitsForGraph();
 
   std::mutex latch_;
