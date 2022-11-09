@@ -23,3 +23,7 @@ Video available at [YouTube](https://www.youtube.com/playlist?list=PLSE8ODhjZXjb
 - [x] [Logging & Recovery](https://15445.courses.cs.cmu.edu/fall2019/project4/)
 
 Projects can be auto-graded on [gradescope](https://www.gradescope.com/courses/195440) via [access code 5VX7JZ](https://github.com/cmu-db/bustub/issues/111#issuecomment-709673126)
+
+## Reference
+
+Thanks to [@zhiyiYo](https://github.com/zhiyiYo/CMU15445) [@gatsbyd](https://github.com/gatsbyd/cmu_15445_2018) [@HumbleHunger](https://github.com/HumbleHunger/Bustub) [@Smith](https://smithcruise.coding.net/public/6.824/cmu15-445/git/files)
